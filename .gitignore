@@ -1,0 +1,8 @@
+.idea/
+.vscode/
+node_modules/
+*.json
+.DB_Store
+*.log
+*.csv
+*.gz
