@@ -36,23 +36,24 @@ export const options = {
     },
 };
 
-
 export function yaRuRequest() {
-    const response = http.get(`${YANDEX_URL}`);
+    const response = http.get(`${YANDEX_URL}`, {
+        tags: { name: 'ya.ru' }
+    });
 
     check(response, {
         'ya.ru status is 200': (r) => r.status === 200,
         'ya.ru response time OK': (r) => r.timings.duration < 5000,
     });
-
 }
 
 export function wwwRuRequest() {
-    const response = http.get(`${WWW_URL}`);
+    const response = http.get(`${WWW_URL}`, {
+        tags: { name: 'www.ru' }
+    });
 
     check(response, {
         'www.ru status is 200': (r) => r.status === 200,
         'www.ru response time OK': (r) => r.timings.duration < 5000,
     });
-
 }
