@@ -2,10 +2,8 @@ import http from 'k6/http';
 import { check, group } from 'k6';
 import { SharedArray } from 'k6/data';
 import { randomItem } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
-import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 const BASE_URL = 'http://webtours.load-test.ru:1080/cgi-bin';
-//http://webtours.load-test.ru:1090
 
 const data = new SharedArray('Get User Credentials', function () {
     const file = JSON.parse(open('./users.json'));
@@ -13,7 +11,8 @@ const data = new SharedArray('Get User Credentials', function () {
 });
 const creditCard = '1111222233334444';
 
-let cookie = ""
+let selectedFlight = "";
+let cookie = "";
 let sessionValue = "";
 let departureCity = "";
 let arrivalCity = "";
@@ -26,7 +25,7 @@ export const options = {
         webtours: {
             executor: 'constant-vus',
             vus: 1,
-            duration: '10s',  
+            duration: '10s',
 
         },
     },
@@ -125,7 +124,6 @@ function chooseDirection() {
         { 'Get reservation data | status_code is 200': (res) => res.status === 200 }
     );
 
-    // Получаем список городов отправления и выбираем город отправления
     const doc = welcomeReservationsPageResult.html();
     let departureCities = []
     doc.find('table select[name=depart] option')
@@ -135,7 +133,6 @@ function chooseDirection() {
         });
     departureCity = randomItem(departureCities);
 
-    // Получаем список городов прибытия и выбираем город прибытия, отличный от города отправления
     let arrivalCities = []
     doc.find('table select[name=arrive] option')
         .toArray()
@@ -144,23 +141,12 @@ function chooseDirection() {
         });
     arrivalCity = randomItem(arrivalCities.filter((item) => item !== departureCity));
 
-    // Заполняем данные о полете для POST-запроса
-   // payloadDirectionData["advanceDiscount"] = doc.find('input[name=advanceDiscount]').val();
     payloadDirectionData["advanceDiscount"] = "0";
-
     payloadDirectionData["depart"] = departureCity;
-    //payloadDirectionData["departDate"] = doc.find('input[name=departDate]').val();
     payloadDirectionData["departDate"] = "10/01/2025";
-
     payloadDirectionData["arrive"] = arrivalCity;
-    //payloadDirectionData["returnDate"] = doc.find('input[name=returnDate]').val();
     payloadDirectionData["returnDate"] = "10/02/2025";
-
     payloadDirectionData["numPassengers"] = "1";
-   // payloadDirectionData["numPassengers"] = doc.find('input[name=numPassengers]').val();
-
-    // payloadDirectionData["seatPref"] = doc.find('input[name=seatPref][checked=checked]').val();
-    // payloadDirectionData["seatType"] = doc.find('input[name=seatType][checked=checked]').val();
     payloadDirectionData["seatPref"] = "None";
     payloadDirectionData["seatType"] = "Coach";
     payloadDirectionData["findFlights.x"] = 46;
@@ -182,32 +168,17 @@ function findFlight() {
         }
     );
 
-    // Получаем список рейсов по данному направлению (flight_number;cost;date)
-    // let flights = []
-    // flightReservationsResult.html().find('input[name=outboundFlight]')
-    //     .toArray()
-    //     .forEach(function (item) {
-    //         flights.push(item.val());
-    //     });
+    let flights = []
+    flightReservationsResult.html().find('input[name=outboundFlight]')
+        .toArray()
+        .forEach(function (item) {
+            flights.push(item.val());
+        });
+    selectedFlight = randomItem(flights)
 
-    let flights = [];
-    const flightElements = flightReservationsResult.html().find('input[name=outboundFlight]')
-        .toArray();
-// Если есть элементы, выбираем случайный
-    const randomFlight = flightElements.length > 0 
-        ? flightElements[Math.floor(Math.random() * flightElements.length)].value 
-        : null;
-// Присваиваем переменной
-    const selectedFlight = randomFlight;
-
-    // Заполняем данные о рейсе для POST-запроса
-    payloadFlightData["outboundFlight"] = randomFlight;
-    // payloadFlightData["numPassengers"] = payloadDirectionData["numPassengers"];
+    payloadFlightData["outboundFlight"] = selectedFlight;
     payloadFlightData["numPassengers"] = "1";
-    // payloadFlightData["advanceDiscount"] = payloadDirectionData["advanceDiscount"];
     payloadFlightData["advanceDiscount"] = "0";
-    // payloadFlightData["seatType"] = payloadDirectionData["seatType"];
-    // payloadFlightData["seatPref"] = payloadDirectionData["seatPref"];
     payloadFlightData["seatType"] = "None";
     payloadFlightData["seatPref"] = "Coach";
     payloadFlightData["reserveFlights.x"] = 76;
@@ -229,14 +200,6 @@ function checkPaymentDetails() {
         }
     );
     const doc = paymentDetailsResult.html();
-    const currentYear = new Date().getFullYear();
-
-    // Заполняем данные о платеже для POST-запроса
-    // payloadPaymentData["firstName"] = doc.find('input[name=firstName]').val();
-    // payloadPaymentData["lastName"] = doc.find('input[name=lastName]').val();
-    // payloadPaymentData["address1"] = doc.find('input[name=address1]').val();
-    // payloadPaymentData["address2"] = doc.find('input[name=address2]').val();
-    // payloadPaymentData["pass1"] = doc.find('input[name=pass1]').val();
     payloadPaymentData["firstName"] = "Ilya";
     payloadPaymentData["lastName"] = "Chukov";
     payloadPaymentData["address1"] = "Moscow";
@@ -244,22 +207,12 @@ function checkPaymentDetails() {
     payloadPaymentData["pass1"] = "Ilya Chukov";
     payloadPaymentData["creditCard"] = creditCard;
     payloadPaymentData["expDate"] = "11/30";
-    // payloadPaymentData["oldCCOption"] = doc.find('input[name=oldCCOption]').val();
-    // payloadPaymentData["numPassengers"] = payloadFlightData["numPassengers"];
-    // payloadPaymentData["seatType"] = payloadFlightData["seatType"];
-    // payloadPaymentData["seatPref"] = payloadFlightData["seatPref"];
-    // payloadPaymentData["outboundFlight"] = payloadFlightData["outboundFlight"];
-    // payloadPaymentData["advanceDiscount"] = payloadFlightData["advanceDiscount"];
-    // payloadPaymentData["returnFlight"] = doc.find('input[name=returnFlight]').val();
-    // payloadPaymentData["JSFormSubmit"] = doc.find('input[name=JSFormSubmit]').val();
     payloadPaymentData["oldCCOption"] = "112";
     payloadPaymentData["numPassengers"] = "1";
-    payloadPaymentData["seatType"] = "None";
-    payloadPaymentData["seatPref"] = "Coach";
-    payloadPaymentData["outboundFlight"] = randomFlight;
+    payloadPaymentData["seatType"] = "Coach";
+    payloadPaymentData["seatPref"] = "None";
+    payloadPaymentData["outboundFlight"] = selectedFlight;
     payloadPaymentData["advanceDiscount"] = "0";
-    // payloadPaymentData["returnFlight"] = doc.find('input[name=returnFlight]').val();
-    // payloadPaymentData["JSFormSubmit"] = doc.find('input[name=JSFormSubmit]').val();
     payloadPaymentData["buyFlights.x"] = 76;
     payloadPaymentData["buyFlights.y"] = 6;
 }
